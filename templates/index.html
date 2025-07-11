@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>API de Tarefas</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Minhas Tarefas</h1>
+
+    <form id="form-tarefa">
+        <input type="text" id="titulo" placeholder="Título" required>
+        <input type="text" id="descricao" placeholder="Descrição" required>
+        <button type="submit">Salvar</button>
+    </form>
+
+    <ul id="lista-tarefas"></ul>
+
+<script>
+    const lista = document.getElementById('lista-tarefas');
+    const form = document.getElementById('form-tarefa');
+    let editandoId = null;
+
+    function carregarTarefas() {
+        fetch('/api/tarefas')
+            .then(res => res.json())
+            .then(tarefas => {
+                lista.innerHTML = '';
+                tarefas.forEach(tarefa => {
+                    const item = document.createElement('li');
+                    item.innerHTML = `
+                        <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="toggleConcluida(${tarefa.id}, this.checked)">
+                        <strong>${tarefa.titulo}</strong> - ${tarefa.descricao}
+                        [${tarefa.concluida ? '✔️ Concluída' : '❌ Pendente'}]
+                        <button onclick="editar(${tarefa.id}, '${tarefa.titulo}', '${tarefa.descricao}', ${tarefa.concluida})">Editar</button>
+                        <button onclick="deletar(${tarefa.id})">Excluir</button>
+                    `;
+                    lista.appendChild(item);
+                });
+            });
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const tarefa = {
+            titulo: document.getElementById('titulo').value,
+            descricao: document.getElementById('descricao').value,
+            concluida: false
+        };
+
+        if (editandoId) {
+            fetch(`/api/tarefas/${editandoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tarefa)
+            }).then(() => {
+                form.reset();
+                editandoId = null;
+                carregarTarefas();
+            });
+        } else {
+            fetch('/api/tarefas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tarefa)
+            }).then(() => {
+                form.reset();
+                carregarTarefas();
+            });
+        }
+    });
+
+    function deletar(id) {
+        fetch(`/api/tarefas/${id}`, {
+            method: 'DELETE'
+        }).then(() => carregarTarefas());
+    }
+
+    function editar(id, titulo, descricao, concluida) {
+        document.getElementById('titulo').value = titulo;
+        document.getElementById('descricao').value = descricao;
+        editandoId = id;
+    }
+
+    function toggleConcluida(id, concluida) {
+        fetch(`/api/tarefas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ titulo: '', descricao: '', concluida })
+        }).then(() => carregarTarefas());
+    }
+
+    carregarTarefas();
+</script>
+
+</body>
+</html>
+
